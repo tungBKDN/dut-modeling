@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const pg = require('pg');
 const { cors } = require('hono/cors');
 
-APP_PORT = process.env.APP_PORT || 3000;
+const APP_PORT = process.env.APP_PORT || 3000;
 
 dotenv.config();
 
