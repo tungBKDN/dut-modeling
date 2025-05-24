@@ -32,11 +32,16 @@ const query = async (text, params) => {
 
 	console.log('🧠 Executed Query:', formatted);
 	const start = Date.now();
-	const res = await pool.query(text, params);
-	const duration = Date.now() - start;
-	console.log('⏱️ Duration:', duration + 'ms', '| 📦 Rows:', res.rowCount);
-
-	return res;
+	try {
+		const res = await pool.query(text, params);
+		const duration = Date.now() - start;
+		console.log('⏱️ Duration:', duration + 'ms', '| 📦 Rows:', res.rowCount);
+		return res;
+	} catch (error) {
+		console.error('❌ Database query error:', error.message);
+		console.error('🧠 Query:', formatted);
+		throw error; // Re-throw the error to let the caller handle it
+	}
 };
 
 const app = new Hono();
