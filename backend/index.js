@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+import dotenv from 'dotenv';
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
