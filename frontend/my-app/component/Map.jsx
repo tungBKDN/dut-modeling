@@ -13,7 +13,8 @@ import Icon from 'ol/style/Icon.js';
 import config from '../urls/config.json';
 import { ImageWMS } from 'ol/source';
 import { Image as ImageLayer } from 'ol/layer';
-
+import Stroke from 'ol/style/Stroke.js';
+import Fill from 'ol/style/Fill.js';
 
 const MapComponent = () => {
    const [coordinates, setCoordinates] = useState([0, 0]);
@@ -27,10 +28,10 @@ const MapComponent = () => {
       const wmsSource = new ImageWMS({
          url: 'http://127.0.0.1:8080/geoserver/cuoiky/wms',
          params: {
-         'LAYERS': 'cuoiky:cuoiky',
-         'VERSION': '1.1.0',
-         'SRS': 'EPSG:4326',
-         'FORMAT': 'image/png',
+            'LAYERS': 'cuoiky:cuoiky',
+            'VERSION': '1.1.0',
+            'SRS': 'EPSG:4326',
+            'FORMAT': 'image/png',
          },
          ratio: 1,
          serverType: 'geoserver',
@@ -78,6 +79,27 @@ const MapComponent = () => {
          },
       });
 
+      // Temp
+      const geoJsonSourceBuildings = new VectorSource({
+         url: 'http://127.0.0.1:8080/geoserver/cuoiky/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cuoiky:buildings&outputFormat=application/json',
+         format: new GeoJSON({
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+         }),
+      });
+      const geoJsonLayerBuildings = new VectorLayer({
+         source: geoJsonSourceBuildings,
+         style: new Style({
+            stroke: new Stroke({
+               color: '#ff6600',
+               width: 2,
+            }),
+            fill: new Fill({
+               color: 'rgba(255, 165, 0, 0.2)',
+            }),
+         }),
+      });
+
       // Loading event handlers
       geojsonSource.on('featuresloadstart', () => {
          console.log("Loading features...");
@@ -105,8 +127,9 @@ const MapComponent = () => {
                })
             }),
             // GeoJSON vector layer
-            new ImageLayer({ source: wmsSource }),
+            // new ImageLayer({ source: wmsSource }),
             geojsonLayer,
+            geoJsonLayerBuildings, // Temporary layer for buildings
          ],
          view: new View({
             center: fromLonLat([108.221, 16.067]),  // Center on Da Nang
