@@ -11,10 +11,11 @@ import GeoJSON from 'ol/format/GeoJSON.js';
 import Style from 'ol/style/Style.js';
 import Icon from 'ol/style/Icon.js';
 import config from '../urls/config.json';
-import { ImageWMS } from 'ol/source';
+import { ImageWMS, Vector } from 'ol/source';
 import { Image as ImageLayer } from 'ol/layer';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
+import Text from 'ol/style/Text.js';
 
 const MapComponent = () => {
    const [coordinates, setCoordinates] = useState([0, 0]);
@@ -25,29 +26,6 @@ const MapComponent = () => {
    const geojsonSourceRef = useRef(null);
 
    useEffect(() => {
-      const wmsSource = new ImageWMS({
-         url: 'http://127.0.0.1:8080/geoserver/cuoiky/wms',
-         params: {
-            'LAYERS': 'cuoiky:cuoiky',
-            'VERSION': '1.1.0',
-            'SRS': 'EPSG:4326',
-            'FORMAT': 'image/png',
-         },
-         ratio: 1,
-         serverType: 'geoserver',
-      });
-
-      wmsSource.on('imageloadstart', () => {
-         setLoading(true);
-      });
-      wmsSource.on('imageloadend', () => {
-         setLoading(false);
-      });
-      wmsSource.on('imageloaderror', () => {
-         setLoading(false);
-         console.error("Image failed to load");
-      });
-
       // Create GeoJSON vector source
       const geojsonSource = new VectorSource({
          url: `${config.BACKEND_URL}/places`, // Use environment variable for API URL
@@ -65,21 +43,82 @@ const MapComponent = () => {
       // Create vector layer with dynamic styling
       const geojsonLayer = new VectorLayer({
          source: geojsonSource,
-         style: (feature) => {
-            const category = feature.get('category');
-            const iconUrl = "https://cdn-icons-png.flaticon.com/512/684/684908.png";
+         style: (feature, resolution) => {
+         const category = feature.get('category');
+         const name = feature.get('name') || '';
+         const iconUrl = "https://cdn-icons-png.flaticon.com/512/684/684908.png";
 
-            return new Style({
-               image: new Icon({
-                  anchor: [0.5, 1],
-                  scale: 0.05,
-                  src: iconUrl,
+         // Label visibility logic (similar to buildings)
+         let showLabel = false;
+         // Always show label for important categories (customize as needed)
+         const importantCategories = ['Canteen', 'Library', 'Main Gate'];
+         if (importantCategories.includes(category)) {
+            showLabel = true;
+         }
+         // Show every 5th label at medium zoom
+         if (!showLabel && resolution < 2.5) {
+            const fid = feature.getId() || feature.ol_uid || 0;
+            if (parseInt(fid.toString().replace(/\D/g, ''), 10) % 5 === 0) {
+            showLabel = true;
+            }
+         }
+         // Show all labels when very zoomed in
+         if (!showLabel && resolution < 1.2) {
+            showLabel = true;
+         }
+
+         const styles = [
+            new Style({
+            image: new Icon({
+               anchor: [0.5, 1],
+               scale: 0.05,
+               src: iconUrl,
+            }),
+            }),
+         ];
+
+         if (showLabel) {
+            styles.push(
+            new Style({
+               text: new Text({
+               text: name,
+               font: 'bold 13px Arial',
+               fill: new Fill({ color: '#222' }),
+               stroke: new Stroke({ color: '#fff', width: 3 }),
+               offsetY: -25,
+               overflow: true,
                }),
-            });
+            })
+            );
+         }
+
+         return styles;
          },
       });
 
-      // Temp
+      // Boundaries layer
+      const geoJSONSourceBoundaries = new VectorSource({
+         url: 'http://127.0.0.1:8080/geoserver/cuoiky/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cuoiky:boundaries&outputFormat=application/json',
+         format: new GeoJSON({
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+         }),
+      });
+      const geoJsonLayerBoundaries = new VectorLayer({
+         source: geoJSONSourceBoundaries,
+         style: new Style({
+            stroke: new Stroke({
+               color: '#ff0000',
+               width: 2,
+               lineDash: [8, 6], // Dashed line: 8px dash, 6px gap
+            }),
+            fill: new Fill({
+               color: 'rgba(128, 128, 128, 0.9)', // Gray background with some transparency
+            }),
+         }),
+      });
+
+      // Buildings layer
       const geoJsonSourceBuildings = new VectorSource({
          url: 'http://127.0.0.1:8080/geoserver/cuoiky/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cuoiky:buildings&outputFormat=application/json',
          format: new GeoJSON({
@@ -87,15 +126,78 @@ const MapComponent = () => {
             featureProjection: 'EPSG:3857'
          }),
       });
+
       const geoJsonLayerBuildings = new VectorLayer({
          source: geoJsonSourceBuildings,
-         style: new Style({
+         style: (feature, resolution) => {
+         // Only show labels for some buildings depending on zoom/resolution
+         // For example, show labels only for "important" buildings or every Nth building at higher resolutions
+         const buildingName = feature.get('building') || '';
+         let showLabel = false;
+
+         // Example: Always show label for specific important buildings
+         const importantBuildings = ['Khu A', 'Tòa S', 'Khu F', 'Viện cơ khí', 'PFIEV'];
+         if (importantBuildings.includes(buildingName)) {
+            showLabel = true;
+         }
+
+         // Example: Show label for every 10th feature at medium zoom
+         if (!showLabel && resolution < 2.5) {
+            // Use feature id or index to stagger labels
+            const fid = feature.getId() || feature.ol_uid || 0;
+            if (parseInt(fid.toString().replace(/\D/g, ''), 10) % 10 === 0) {
+            showLabel = true;
+            }
+         }
+
+         // Example: Show all labels only when very zoomed in
+         if (!showLabel && resolution < 1.2) {
+            showLabel = true;
+         }
+
+         const styles = [
+            new Style({
             stroke: new Stroke({
                color: '#ff6600',
                width: 2,
             }),
             fill: new Fill({
-               color: 'rgba(255, 165, 0, 0.2)',
+               color: 'rgba(255, 165, 0, 0.95)',
+            }),
+            }),
+         ];
+         if (showLabel) {
+            styles.push(
+            new Style({
+               text: new Text({
+               text: buildingName,
+               font: 'bold 14px Arial',
+               fill: new Fill({ color: '#222' }),
+               stroke: new Stroke({ color: '#fff', width: 3 }),
+               overflow: true,
+               }),
+            })
+            );
+         }
+         return styles;
+         },
+      });
+
+      // Road layer
+      const geoJSONSourceRoads = new VectorSource({
+         url: 'http://127.0.0.1:8080/geoserver/cuoiky/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cuoiky:road&outputFormat=application/json',
+         format: new GeoJSON({
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+         }),
+      });
+      const geoJsonLayerRoads = new VectorLayer({
+         source: geoJSONSourceRoads,
+         style: new Style({
+            stroke: new Stroke({
+               color: '#0000ff',
+               width: 2,
+               lineDash: [10, 5], // Dashed line for roads
             }),
          }),
       });
@@ -105,12 +207,10 @@ const MapComponent = () => {
          console.log("Loading features...");
          setLoading(true);
       });
-
       geojsonSource.on('featuresloadend', () => {
          console.log("Features loaded successfully");
          setLoading(false);
       });
-
       geojsonSource.on('featuresloaderror', (e) => {
          setLoading(false);
          console.error("Features failed to load", e);
@@ -128,12 +228,14 @@ const MapComponent = () => {
             }),
             // GeoJSON vector layer
             // new ImageLayer({ source: wmsSource }),
-            geojsonLayer,
+            geoJsonLayerBoundaries, // Temporary layer for boundaries
             geoJsonLayerBuildings, // Temporary layer for buildings
+            geoJsonLayerRoads, // Temporary layer for roads
+            geojsonLayer,
          ],
          view: new View({
-            center: fromLonLat([108.221, 16.067]),  // Center on Da Nang
-            zoom: 12,
+            center: fromLonLat([108.153, 16.076]),  // Center on Da Nang
+            zoom: 17,
          }),
       });
 
