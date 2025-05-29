@@ -11,7 +11,8 @@ import GeoJSON from 'ol/format/GeoJSON.js';
 import Style from 'ol/style/Style.js';
 import Icon from 'ol/style/Icon.js';
 import config from '../urls/config.json';
-
+import { ImageWMS } from 'ol/source';
+import { Image as ImageLayer } from 'ol/layer';
 
 
 const MapComponent = () => {
@@ -23,6 +24,29 @@ const MapComponent = () => {
    const geojsonSourceRef = useRef(null);
 
    useEffect(() => {
+      const wmsSource = new ImageWMS({
+         url: 'http://127.0.0.1:8080/geoserver/cuoiky/wms',
+         params: {
+         'LAYERS': 'cuoiky:cuoiky',
+         'VERSION': '1.1.0',
+         'SRS': 'EPSG:4326',
+         'FORMAT': 'image/png',
+         },
+         ratio: 1,
+         serverType: 'geoserver',
+      });
+
+      wmsSource.on('imageloadstart', () => {
+         setLoading(true);
+      });
+      wmsSource.on('imageloadend', () => {
+         setLoading(false);
+      });
+      wmsSource.on('imageloaderror', () => {
+         setLoading(false);
+         console.error("Image failed to load");
+      });
+
       // Create GeoJSON vector source
       const geojsonSource = new VectorSource({
          url: `${config.BACKEND_URL}/places`, // Use environment variable for API URL
@@ -32,6 +56,8 @@ const MapComponent = () => {
          }),
       });
 
+      console.log("GeoJSON Source created:", geojsonSource);
+
       // Store reference for later use
       geojsonSourceRef.current = geojsonSource;
 
@@ -40,7 +66,7 @@ const MapComponent = () => {
          source: geojsonSource,
          style: (feature) => {
             const category = feature.get('category');
-            const iconUrl = categoryIcons[category] || "https://cdn-icons-png.flaticon.com/512/684/684908.png";
+            const iconUrl = "https://cdn-icons-png.flaticon.com/512/684/684908.png";
 
             return new Style({
                image: new Icon({
@@ -79,6 +105,7 @@ const MapComponent = () => {
                })
             }),
             // GeoJSON vector layer
+            new ImageLayer({ source: wmsSource }),
             geojsonLayer,
          ],
          view: new View({
@@ -170,27 +197,17 @@ const MapComponent = () => {
             id="map"
             style={{ width: '100%', height: '100%' }}
          >
-            {coordinates && (
-               <div className="flex bg-white shadow-md rounded-md p-4 text-sm text-gray-800 border border-gray-100 -translate-y-20">
-                  <p className="font-semibold text-gray-600">📍 Current Coordinates</p>
-                  <div className="flex gap-4 mt-1">
-                     <p><strong>Lon:</strong> {coordinates[0].toFixed(6)}</p>
-                     <p><strong>Lat:</strong> {coordinates[1].toFixed(6)}</p>
-                  </div>
-               </div>
-            )}
-
          </div>
-
-         {/* {coordinates && (
-            <div className="bg-white shadow-md rounded-md p-4 text-sm text-gray-800 border border-gray-100 translate-y-2">
+         {coordinates && (
+            <div
+               className="relative bg-white shadow-md rounded-md p-4 text-sm text-gray-800 border border-gray-100">
                <p className="font-semibold text-gray-600">📍 Current Coordinates</p>
                <div className="flex gap-4 mt-1">
                   <p><strong>Lon:</strong> {coordinates[0].toFixed(6)}</p>
                   <p><strong>Lat:</strong> {coordinates[1].toFixed(6)}</p>
                </div>
             </div>
-         )} */}
+         )}
       </div>
    );
 };

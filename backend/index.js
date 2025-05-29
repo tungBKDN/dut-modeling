@@ -52,8 +52,23 @@ app.get('/', (c) => {
 });
 
 app.get('/places', async (c) => {
-	const result = await query("SELECT * FROM places");
-	return c.json(result.rows)
+	const { rows } = await pool.query(`
+  SELECT id, name, image_url, ST_AsGeoJSON(geom) as geometry FROM places
+`);
+
+	const geojson = {
+		type: "FeatureCollection",
+		features: rows.map(row => ({
+			type: "Feature",
+			geometry: JSON.parse(row.geometry),  // this avoids the string problem
+			properties: {
+				id: row.id,
+				name: row.name,
+				image_url: row.image_url,
+			}
+		}))
+	}
+	return c.json(geojson);
 });
 
 // Use the serve function instead of app.listen
