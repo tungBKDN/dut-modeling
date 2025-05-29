@@ -16,6 +16,7 @@ import { Image as ImageLayer } from 'ol/layer';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
 import Text from 'ol/style/Text.js';
+import PanoramaView from './PanoramaView';
 
 const MapComponent = () => {
    const [coordinates, setCoordinates] = useState([0, 0]);
@@ -24,6 +25,13 @@ const MapComponent = () => {
    const [openModal, setOpenModal] = useState(false);
    const [loading, setLoading] = useState(false);
    const geojsonSourceRef = useRef(null);
+   const [isView, setIsView] = useState(true);
+   const [img, setImg] = useState("http://localhost:3000/media/IMG_4154");
+
+   const handleCloseView = () => {
+      setIsView(false);
+      // console.log(isView);
+   }
 
    useEffect(() => {
       // Create GeoJSON vector source
@@ -171,9 +179,9 @@ const MapComponent = () => {
             new Style({
                text: new Text({
                text: buildingName,
-               font: 'bold 14px Arial',
+               font: 'italic 14px Arial',
                fill: new Fill({ color: '#222' }),
-               stroke: new Stroke({ color: '#fff', width: 3 }),
+               stroke: new Stroke({ color: '#fff', width: 2 }),
                overflow: true,
                }),
             })
@@ -253,8 +261,10 @@ const MapComponent = () => {
          if (feature) {
             // Clicked on a feature
             const properties = feature.getProperties();
-            setSpot(properties);
-            setOpenModal(true);
+            console.log('Clicked feature properties:', properties);
+            setIsView(true);
+            setImg(properties.image_url);
+            console.log('Clicked feature:', properties.image_url);
          } else {
             // Clicked on empty map area
             const coordinate = toLonLat(event.coordinate);
@@ -275,7 +285,7 @@ const MapComponent = () => {
    };
 
    return (
-      <div className='flex relative border-2 border-gray-500 rounded-2xl' style={{ width: '100vw%', height: '100vh' }}>
+      <div className='flex border-2 border-gray-500 rounded-2xl' style={{ width: '100vw%', height: '100vh' }}>
          {loading && (
             <div className="absolute top-1/2 left-1/2 z-50 transform -translate-x-1/2 -translate-y-1/2 bg-white/70 p-4 rounded shadow-lg flex gap-4">
                <Spinner color="info" size="lg" aria-label="Loading map" />
@@ -325,14 +335,15 @@ const MapComponent = () => {
          </div>
          {coordinates && (
             <div
-               className="relative bg-white shadow-md rounded-md p-4 text-sm text-gray-800 border border-gray-100">
-               <p className="font-semibold text-gray-600">📍 Current Coordinates</p>
+               className="absolute bg-white shadow-md rounded-md p-3 text-sm text-gray-800 border border-gray-100 m-2 font-mo">
+               <p className="font-semibold text-gray-600">Coordiate:</p>
                <div className="flex gap-4 mt-1">
-                  <p><strong>Lon:</strong> {coordinates[0].toFixed(6)}</p>
-                  <p><strong>Lat:</strong> {coordinates[1].toFixed(6)}</p>
+                  <p><strong>Lon:</strong> {coordinates[0].toFixed(4)}</p>
+                  <p><strong>Lat:</strong> {coordinates[1].toFixed(4)}</p>
                </div>
             </div>
          )}
+         <PanoramaView isView={isView} onClose={handleCloseView} url={"http://localhost:3000/media/" + img} className="absolute w-80 "/>
       </div>
    );
 };
