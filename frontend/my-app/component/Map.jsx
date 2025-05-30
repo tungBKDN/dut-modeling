@@ -22,14 +22,14 @@ const MapComponent = () => {
    const [coordinates, setCoordinates] = useState([0, 0]);
    const [mapInstance, setMapInstance] = useState(null);
    const [spot, setSpot] = useState(null);
-   const [openModal, setOpenModal] = useState(false);
    const [loading, setLoading] = useState(false);
    const geojsonSourceRef = useRef(null);
-   const [isView, setIsView] = useState(true);
+   const [isView, setIsView] = useState(false);
    const [img, setImg] = useState("http://localhost:3000/media/IMG_4154");
 
    const handleCloseView = () => {
       setIsView(false);
+      setLoading(false);
       // console.log(isView);
    }
 
@@ -52,15 +52,14 @@ const MapComponent = () => {
       const geojsonLayer = new VectorLayer({
          source: geojsonSource,
          style: (feature, resolution) => {
-         const category = feature.get('category');
          const name = feature.get('name') || '';
          const iconUrl = "https://cdn-icons-png.flaticon.com/512/684/684908.png";
 
          // Label visibility logic (similar to buildings)
          let showLabel = false;
          // Always show label for important categories (customize as needed)
-         const importantCategories = ['Canteen', 'Library', 'Main Gate'];
-         if (importantCategories.includes(category)) {
+         const importantCategories = ['Khu F', 'Hồ F', 'Khoa CNTT', 'Cổng chính Bách Khoa', 'Khu A'];
+         if (importantCategories.includes(name)) {
             showLabel = true;
          }
          // Show every 5th label at medium zoom
@@ -179,7 +178,7 @@ const MapComponent = () => {
             new Style({
                text: new Text({
                text: buildingName,
-               font: 'italic 14px Arial',
+               font: 'italic 10px Arial',
                fill: new Fill({ color: '#222' }),
                stroke: new Stroke({ color: '#fff', width: 2 }),
                overflow: true,
@@ -292,40 +291,6 @@ const MapComponent = () => {
                <p className="text-center mt-2 text-sm text-gray-600">Loading map...</p>
             </div>
          )}
-
-         <Modal show={spot && openModal} onClose={() => setOpenModal(false)}>
-            <ModalHeader>{spot?.name}</ModalHeader>
-            <ModalBody>
-               <div className="space-y-4">
-                  <p className="text-base leading-relaxed text-gray-700">
-                     {spot?.description || "Không có mô tả"}
-                  </p>
-
-                  {spot?.url && (
-                     <img
-                        src={spot.url}
-                        alt={spot?.name || "No image available"}
-                        className="rounded-md shadow w-full object-cover"
-                     />
-                  )}
-
-                  <div>
-                     <h4 className="font-semibold text-gray-600">📌 Địa điểm:</h4>
-                     <p className="text-sm text-gray-800">{spot?.location}</p>
-                  </div>
-
-                  <div>
-                     <h4 className="font-semibold text-gray-600">🏷️ Loại:</h4>
-                     <p className="text-sm text-gray-800">{spot?.category}</p>
-                  </div>
-               </div>
-            </ModalBody>
-            <ModalFooter>
-               <Button color="gray" onClick={() => setOpenModal(false)}>
-                  Close
-               </Button>
-            </ModalFooter>
-         </Modal>
 
          <div
             className='cursor-pointer'

@@ -1,3 +1,4 @@
+import { set } from 'ol/transform';
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -7,6 +8,7 @@ const PanoramaSkybox = ({ isView, url, onClose }) => {
    const [loading, setLoading] = useState(true);
 
    useEffect(() => {
+      setLoading(true);
       let scene, camera, renderer, controls, sphere, animationId;
       const container = containerRef.current;
       if (!container) return;
